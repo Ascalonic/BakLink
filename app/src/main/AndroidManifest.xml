@@ -13,7 +13,9 @@
         android:supportsRtl="true"
         android:requestLegacyExternalStorage="true"
         android:theme="@style/Theme.BakLink">
-        <activity android:name=".ContentDownloader">
+        <activity android:name=".ContentDownloader"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:label="@string/shareToWhatsapp">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />

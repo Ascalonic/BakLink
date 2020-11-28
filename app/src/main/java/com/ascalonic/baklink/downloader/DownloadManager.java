@@ -16,14 +16,14 @@ import java.io.OutputStream;
 import java.net.URL;
 import java.net.URLConnection;
 
-public class DownloadManager extends AsyncTask<String, Void, String> {
+public class DownloadManager extends AsyncTask<String, Integer, String> {
 
     private String url;
     private String downloadUrl;
 
-    public AsyncResponse delegate = null;//Call back interface
+    public AsyncDownloadResponse delegate = null;//Call back interface
 
-    public DownloadManager(AsyncResponse asyncResponse, String url) {
+    public DownloadManager(AsyncDownloadResponse asyncResponse, String url) {
         delegate = asyncResponse;//Assigning call back interfacethrough constructor
         this.url = url;
     }
@@ -38,7 +38,7 @@ public class DownloadManager extends AsyncTask<String, Void, String> {
         } else if (url.startsWith("https://www.instagram.com/tv/")) {
             return ContentType.IgtvVideo;
         } else if (url.startsWith("https://www.facebook.com/113383062038446/posts/")) {
-            return ContentType.YoutubeVideo;
+            return ContentType.FacebookVideo;
         } else
             return ContentType.Unsupported;
     }
@@ -77,6 +77,7 @@ public class DownloadManager extends AsyncTask<String, Void, String> {
                 total += count;
                 // writing data to file
                 output.write(data, 0, count);
+                publishProgress((int)((total*100)/lenghtOfFile));
             }
 
             // flushing output
@@ -91,6 +92,11 @@ public class DownloadManager extends AsyncTask<String, Void, String> {
         }
 
         return null;
+    }
+
+    protected void onProgressUpdate(Integer... progress) {
+        // setting progress percentage
+        delegate.onProgressUpdate(progress[0]);
     }
 
     protected void onPostExecute(String result) {

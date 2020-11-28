@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">BakLink</string>
+    <string name="shareToWhatsapp">BakLink WhatsApp</string>
 </resources>

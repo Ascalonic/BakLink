@@ -5,6 +5,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -13,9 +15,11 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.ascalonic.baklink.downloader.AsyncDownloadResponse;
 import com.ascalonic.baklink.downloader.AsyncResponse;
 import com.ascalonic.baklink.downloader.ContentType;
 import com.ascalonic.baklink.downloader.DownloadManager;
@@ -27,7 +31,8 @@ public class ContentDownloader extends AppCompatActivity {
     private static final int REQUEST = 112;
     private Context mContext=ContentDownloader.this;
 
-    private TextView logTitle, logText;
+    private TextView logTitle, logText, lblDownloadProgress;
+    private ProgressBar prgxDownloadProgress;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,6 +41,11 @@ public class ContentDownloader extends AppCompatActivity {
 
         logTitle = (TextView)findViewById(R.id.logTitle);
         logText = (TextView)findViewById(R.id.logText);
+        lblDownloadProgress = (TextView)findViewById(R.id.lblDownloadProgress);
+        prgxDownloadProgress = (ProgressBar) findViewById(R.id.prgxDownloadProgress);
+
+        lblDownloadProgress.setText("0%");
+        prgxDownloadProgress.setProgress(0);
 
         if (Build.VERSION.SDK_INT >= 23) {
             String[] PERMISSIONS = {android.Manifest.permission.WRITE_EXTERNAL_STORAGE};
@@ -48,6 +58,7 @@ public class ContentDownloader extends AppCompatActivity {
             //do here
         }
 
+        //Get data shared from other apps
         Intent intent = getIntent();
         String action = intent.getAction();
         String type = intent.getType();
@@ -57,6 +68,8 @@ public class ContentDownloader extends AppCompatActivity {
                 verifyUrl(intent.getStringExtra(Intent.EXTRA_TEXT)); // Handle text being sent
             }
         }
+
+        setTitle("Share video as MP4");
     }
 
     @Override
@@ -67,7 +80,7 @@ public class ContentDownloader extends AppCompatActivity {
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     //do here
                 } else {
-                    Toast.makeText(mContext, "The app was not allowed to write in your storage", Toast.LENGTH_LONG).show();
+                    Toast.makeText(mContext, "BakLink doesn't have permission to write to your storage", Toast.LENGTH_LONG).show();
                 }
             }
         }
@@ -89,26 +102,38 @@ public class ContentDownloader extends AppCompatActivity {
         logTitle.setText("Please Wait...");
         logText.setText("Resolving Video...");
 
-        DownloadManager downloadManager = new DownloadManager(new AsyncResponse() {
+        DownloadManager downloadManager = new DownloadManager(new AsyncDownloadResponse() {
             @Override
             public void processFinish(Object output) {
                 logTitle.setText("Done.");
                 logText.setText("Ready to share");
 
-                Uri uri = Uri.parse(Environment.getExternalStorageDirectory().toString() + "/Download/downloadedfile.mp4");
-                Intent videoShare = new Intent(Intent.ACTION_SEND);
-                videoShare.setType("*/*");
-                videoShare.setPackage("com.whatsapp");
-                videoShare.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                videoShare.putExtra(Intent.EXTRA_STREAM,uri);
-                startActivity(videoShare);
+                try{
+                    Uri uri = Uri.parse(Environment.getExternalStorageDirectory().toString() + "/Download/downloadedfile.mp4");
+                    Intent videoShare = new Intent(Intent.ACTION_SEND);
+                    videoShare.setType("*/*");
+                    videoShare.setPackage("com.whatsapp");
+                    videoShare.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    videoShare.putExtra(Intent.EXTRA_STREAM,uri);
+                    startActivity(videoShare);
+                }
+                catch(ActivityNotFoundException ex)
+                {
+                    showAlertBox("Oops! Looks like You don't have Whatsapp installed", "No Whatsapp Found");
+                }
+            }
+
+            @Override
+            public void onProgressUpdate(Object output) {
+                lblDownloadProgress.setText((int)output + "%");
+                prgxDownloadProgress.setProgress((int)output);
             }
         } ,url);
 
         ContentType type = downloadManager.GetContentType();
         if(type == ContentType.Unsupported)
         {
-            Log.d("download_url", "Error - unsupported format");
+            showAlertBox("Sorry! Looks like a video that we don't yet support.", "Unsupported format");
         }
         else {
             logText.setText("Extracting Download Link...");
@@ -117,5 +142,15 @@ public class ContentDownloader extends AppCompatActivity {
             logText.setText("Downloading Video...");
             downloadManager.execute();
         }
+    }
+
+    private void showAlertBox(String message, String title)
+    {
+        AlertDialog.Builder dlgAlert  = new AlertDialog.Builder(this);
+        dlgAlert.setMessage(message);
+        dlgAlert.setTitle(title);
+        dlgAlert.setPositiveButton("OK", null);
+        dlgAlert.setCancelable(true);
+        dlgAlert.create().show();
     }
 }
