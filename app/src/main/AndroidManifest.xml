@@ -13,6 +13,15 @@
         android:supportsRtl="true"
         android:requestLegacyExternalStorage="true"
         android:theme="@style/Theme.BakLink">
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.ascalonic.baklink.fileprovider"
+            android:grantUriPermissions="true"
+            android:exported="false">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/filepaths" />
+        </provider>
         <activity android:name=".ContentDownloader"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:label="@string/shareToWhatsapp">
@@ -28,6 +37,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <meta-data
+            android:name="preloaded_fonts"
+            android:resource="@array/preloaded_fonts" />
     </application>
 
 </manifest>

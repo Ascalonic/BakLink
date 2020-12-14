@@ -3,6 +3,7 @@ package com.ascalonic.baklink;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.FileProvider;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -14,6 +15,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -23,8 +25,12 @@ import com.ascalonic.baklink.downloader.AsyncDownloadResponse;
 import com.ascalonic.baklink.downloader.AsyncResponse;
 import com.ascalonic.baklink.downloader.ContentType;
 import com.ascalonic.baklink.downloader.DownloadManager;
+import com.ascalonic.baklink.downloader.PixtureServerClient;
+
+import org.jsoup.Jsoup;
 
 import java.io.File;
+import java.util.UUID;
 
 public class ContentDownloader extends AppCompatActivity {
 
@@ -33,6 +39,9 @@ public class ContentDownloader extends AppCompatActivity {
 
     private TextView logTitle, logText, lblDownloadProgress;
     private ProgressBar prgxDownloadProgress;
+    private String saveLocation;
+    private File savedVideo;
+    private ClientData clientData;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,9 +62,21 @@ public class ContentDownloader extends AppCompatActivity {
                 ActivityCompat.requestPermissions((Activity) mContext, PERMISSIONS, REQUEST );
             } else {
                 //do here
+                Init();
             }
         } else {
             //do here
+        }
+        setTitle("Share video as MP4");
+    }
+
+    private void Init()
+    {
+        clientData = new ClientData();
+        if(!clientData.ReadFromFile(getBaseContext()))
+        {
+            String id = UUID.randomUUID().toString();
+            clientData.Id = id;
         }
 
         //Get data shared from other apps
@@ -68,8 +89,6 @@ public class ContentDownloader extends AppCompatActivity {
                 verifyUrl(intent.getStringExtra(Intent.EXTRA_TEXT)); // Handle text being sent
             }
         }
-
-        setTitle("Share video as MP4");
     }
 
     @Override
@@ -78,7 +97,7 @@ public class ContentDownloader extends AppCompatActivity {
         switch (requestCode) {
             case REQUEST: {
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    //do here
+                    Init();
                 } else {
                     Toast.makeText(mContext, "BakLink doesn't have permission to write to your storage", Toast.LENGTH_LONG).show();
                 }
@@ -102,14 +121,39 @@ public class ContentDownloader extends AppCompatActivity {
         logTitle.setText("Please Wait...");
         logText.setText("Resolving Video...");
 
+        File file
+                = getBaseContext().getExternalFilesDir(null);
+        File imagePath = new File(file , "downloads");
+        if (!imagePath.exists()) {
+            imagePath.mkdir();
+        }
+        String videoId = UUID.randomUUID().toString();
+        savedVideo = new File(imagePath.getPath(), videoId + ".mp4");
+
         DownloadManager downloadManager = new DownloadManager(new AsyncDownloadResponse() {
             @Override
             public void processFinish(Object output) {
                 logTitle.setText("Done.");
                 logText.setText("Ready to share");
 
+                Video video = new Video();
+                video.Path = savedVideo.getAbsolutePath();
+                video.Url = url;
+                video.Title = "";
+                clientData.Videos.add(video);
+
+                clientData.WriteToFile(getBaseContext());
+                PixtureServerClient client = new PixtureServerClient(new AsyncResponse() {
+                    @Override
+                    public void processFinish(Object output) {
+
+                    }
+                }, clientData.Id, video.Url);
+                client.execute();
+
                 try{
-                    Uri uri = Uri.parse(Environment.getExternalStorageDirectory().toString() + "/Download/downloadedfile.mp4");
+                    String authority = getBaseContext().getApplicationContext().getPackageName() + ".fileprovider";
+                    Uri uri = FileProvider.getUriForFile(getBaseContext(), authority, savedVideo);
                     Intent videoShare = new Intent(Intent.ACTION_SEND);
                     videoShare.setType("*/*");
                     videoShare.setPackage("com.whatsapp");
@@ -128,7 +172,7 @@ public class ContentDownloader extends AppCompatActivity {
                 lblDownloadProgress.setText((int)output + "%");
                 prgxDownloadProgress.setProgress((int)output);
             }
-        } ,url);
+        } ,url, savedVideo);
 
         ContentType type = downloadManager.GetContentType();
         if(type == ContentType.Unsupported)
@@ -137,7 +181,7 @@ public class ContentDownloader extends AppCompatActivity {
         }
         else {
             logText.setText("Extracting Download Link...");
-            downloadManager.ParseDownloadUrl();
+            downloadManager.ParseDownloadUrl(type);
 
             logText.setText("Downloading Video...");
             downloadManager.execute();

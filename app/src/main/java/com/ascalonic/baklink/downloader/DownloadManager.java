@@ -9,6 +9,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 
 import java.io.BufferedInputStream;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -20,12 +21,14 @@ public class DownloadManager extends AsyncTask<String, Integer, String> {
 
     private String url;
     private String downloadUrl;
+    private File downloadedFile;
 
     public AsyncDownloadResponse delegate = null;//Call back interface
 
-    public DownloadManager(AsyncDownloadResponse asyncResponse, String url) {
+    public DownloadManager(AsyncDownloadResponse asyncResponse, String url, File downloadedFile) {
         delegate = asyncResponse;//Assigning call back interfacethrough constructor
         this.url = url;
+        this.downloadedFile = downloadedFile;
     }
 
     public ContentType GetContentType() {
@@ -37,24 +40,36 @@ public class DownloadManager extends AsyncTask<String, Integer, String> {
             return ContentType.InstagramVideo;
         } else if (url.startsWith("https://www.instagram.com/tv/")) {
             return ContentType.IgtvVideo;
-        } else if (url.startsWith("https://www.facebook.com/113383062038446/posts/")) {
+        } else if (url.startsWith("https://www.facebook.com/")) {
             return ContentType.FacebookVideo;
         } else
             return ContentType.Unsupported;
     }
 
-    public void ParseDownloadUrl()
+    public void ParseDownloadUrl(ContentType type)
     {
-        new InstagramVideoLinkParser(new AsyncResponse() {
-            @Override
-            public void processFinish(Object output) {
-                downloadUrl = (String)output;
-                Log.d("download_url_2", downloadUrl);
-            }
-        }).execute(url);
+        if(type == ContentType.InstagramVideo || type == ContentType.IgtvVideo || type == ContentType.InstagramReel)
+        {
+            new InstagramVideoLinkParser(new AsyncResponse() {
+                @Override
+                public void processFinish(Object output) {
+                    downloadUrl = (String)output;
+                }
+            }).execute(url);
+        }
+        else if(type == ContentType.FacebookVideo)
+        {
+            new FacebookVideoLinkParser(new AsyncResponse() {
+                @Override
+                public void processFinish(Object output) {
+                    downloadUrl = (String)output;
+                }
+            }).execute(url);
+        }
     }
 
     protected String doInBackground(String... urls) {
+
         int count;
         try {
             String root = Environment.getExternalStorageDirectory().toString();
@@ -69,7 +84,7 @@ public class DownloadManager extends AsyncTask<String, Integer, String> {
             InputStream input = new BufferedInputStream(url.openStream(), 8192);
 
             // Output stream to write file
-            OutputStream output = new FileOutputStream(root + "/Download/downloadedfile.mp4");
+            OutputStream output = new FileOutputStream(downloadedFile);
             byte data[] = new byte[1024];
 
             long total = 0;

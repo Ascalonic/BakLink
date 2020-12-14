@@ -1,4 +1,11 @@
 <resources>
     <string name="app_name">BakLink</string>
     <string name="shareToWhatsapp">BakLink WhatsApp</string>
+    <string name="intro_message">Welcome to BakLink - the fastest way to share Instagram and Facebook videos as MP4.
+        To use BakLink, share the video you need to share as mp4, to BakLink. BakLink will instantly start downloading
+        the video. After the download is complete, Whatsapp will automatically open with the shared mp4!
+        Currently BakLink supports Instagram videos, IGTV videos, Reels and Facebook videos. You can share videos
+        directly to WhatsApp. So you need to have WhatsApp installed in your device.
+    </string>
+    <string name="contact">For feedbacks and complaints contact frontdesk@ascalonic.com</string>
 </resources>
